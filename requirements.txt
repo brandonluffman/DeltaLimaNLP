@@ -4,6 +4,8 @@ pandas==2.1.4
 networkx==3.2.1
 transformers==4.36.2
 faker==22.0.0
+spacy[lookups]
+https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.0/en_core_web_sm-3.7.0-py3-none-any.whl
 
 # Required dependencies for transformers
 torch==2.1.2
