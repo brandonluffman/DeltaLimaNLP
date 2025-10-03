@@ -182,10 +182,10 @@ def get_graph_json():
         raise HTTPException(404, "No graph data")
     return store.graph_json
 
-@app.post("/pipeline")
-def trigger_pipeline():
-    run_pipeline()
-    return {"status": "done"}
+# @app.post("/pipeline")
+# def trigger_pipeline():
+#     run_pipeline()
+#     return {"status": "done"}
 
 scheduler = BackgroundScheduler()
 scheduler.add_job(run_pipeline, 'interval', hours=6)
