@@ -1,0 +1,31 @@
+# Core NLP dependencies
+spacy==3.7.2
+pandas==2.1.4
+networkx==3.2.1
+transformers==4.36.2
+faker==22.0.0
+
+# Required dependencies for transformers
+torch==2.1.2
+tokenizers==0.15.0
+huggingface-hub==0.20.2
+
+# Required dependencies for spacy
+spacy-legacy==3.0.12
+spacy-loggers==1.0.5
+thinc==8.2.2
+
+# Data processing
+numpy==1.26.3
+
+# FastAPI and web server
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+
+# Scheduling
+apscheduler==3.10.4
+
+# Additional dependencies
+python-multipart==0.0.6
+starlette==0.35.1
