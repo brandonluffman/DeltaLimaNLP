@@ -31,3 +31,7 @@ apscheduler==3.10.4
 # Additional dependencies
 python-multipart==0.0.6
 starlette==0.35.1
+
+
+# Neoj4 Database 
+neo4j==5.28.0

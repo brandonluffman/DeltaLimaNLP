@@ -6,9 +6,22 @@ import pandas as pd
 from fastapi.middleware.cors import CORSMiddleware
 import sys
 import os
+from neo4j import GraphDatabase
+import dotenv
 
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+
+load_status = dotenv.load_dotenv("Neo4j-9a89c3df-Created-2025-10-09.txt")
+if load_status is False:
+    raise RuntimeError('Environment variables not loaded.')
+
+NEO4J_URI = os.getenv("NEO4J_URI")
+NEO4J_USER = os.getenv("NEO4J_USERNAME")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD")
+
+if not all([NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD]):
+    raise RuntimeError('Missing required Neo4j environment variables (NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD)')
 
 app = FastAPI(title="Legal NLP API")
 
@@ -31,7 +44,8 @@ try:
     #               generate_case_summaries, graph_to_json)
     from ingest_emails import generate_email_batch
     from nlp_preprocessing import preprocess_emails
-    from knowledge_graph import build_graph, graph_to_json
+    # from knowledge_graph import build_graph, graph_to_json
+    from neo import build_graph, graph_to_json
     from summarization import generate_case_summaries
 
 except ImportError:
@@ -44,7 +58,9 @@ class Store:
     entities = pd.DataFrame()
     summaries = pd.DataFrame()
     graph_json = {}
+    # graph = None
     last_update = None
+    neo4j_driver = None
 
 store = Store()
 
@@ -53,9 +69,12 @@ def run_pipeline():
     try:
         emails = generate_email_batch(n=20)
         entities = preprocess_emails(emails)
-        graph = build_graph(entities)
+        # graph = build_graph(entities)
         
-        # Save outputs
+        if store.neo4j_driver:
+            build_graph(entities, store.neo4j_driver)
+            store.graph_json = graph_to_json(store.neo4j_driver)
+
         os.makedirs("data", exist_ok=True)
         os.makedirs("static", exist_ok=True)
         entities.to_csv("data/entities.csv", index=False)
@@ -71,9 +90,10 @@ def run_pipeline():
         store.emails = emails
         store.entities = entities
         store.summaries = summaries
-        store.graph_json = graph_to_json(graph)
-        with open("static/graph.json", "w") as f:
-            json.dump(store.graph_json, f)
+        # store.graph = graph
+        # store.graph_json = graph_to_json(graph)
+        # with open("static/graph.json", "w") as f:
+        #     json.dump(store.graph_json, f)
         store.last_update = datetime.utcnow()
         
     except Exception as e:
@@ -103,8 +123,14 @@ def load_existing_data():
         
         # import networkx as nx
         store.last_update = datetime.fromtimestamp(os.path.getmtime("data/entities.csv"))
-        graph = build_graph(store.entities)
-        store.graph_json = graph_to_json(graph)
+        # graph = build_graph(store.entities)
+
+        if store.neo4j_driver:
+            build_graph(store.entities, store.neo4j_driver)
+            store.graph_json = graph_to_json(store.neo4j_driver)
+        
+        # store.graph = graph
+        # store.graph_json = graph_to_json(graph)
 
 
         return True
@@ -194,6 +220,16 @@ scheduler.add_job(run_pipeline, 'interval', hours=6)
 @app.on_event("startup")
 def startup():
     try:
+        try:
+            store.neo4j_driver = GraphDatabase.driver(
+                NEO4J_URI, 
+                auth=(NEO4J_USER, NEO4J_PASSWORD)
+            )
+            print(f"Connected to Neo4j at {NEO4J_URI}")
+        except Exception as e:
+            print(f"Warning: Could not connect to Neo4j: {e}")
+            store.neo4j_driver = None
+
         if load_existing_data():
             pass
         else:
@@ -207,6 +243,10 @@ def startup():
 @app.on_event("shutdown")
 def shutdown():
     scheduler.shutdown()
+
+    if store.neo4j_driver:
+        store.neo4j_driver.close()
+        print("Closed Neo4j connection")
 
 if __name__ == "__main__":
     import uvicorn
